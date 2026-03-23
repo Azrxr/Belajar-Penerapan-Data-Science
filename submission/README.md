@@ -16,14 +16,14 @@
   - Menurunnya moral tim yang tersisa
 - **Kebutuhan Identifikasi**: Perlunya identifikasi faktor-faktor yang mempengaruhi attrition untuk implementasi strategi retensi
 
-### Cakupan Proyek
+**Cakupan Proyek**
 
 Proyek ini mencakup:
 
 1. **Exploratory Data Analysis (EDA)**: Analisis mendalam tentang faktor-faktor yang berkorelasi dengan attrition
 2. **Data Preparation**: Cleaning, encoding, dan preprocessing data karyawan
 3. **Predictive Modeling**: Membangun model machine learning untuk memprediksi attrition
-4. **Business Dashboard**: Visualisasi interaktif di Looker Studio untuk monitoring attrition metrics
+4. **Business Dashboard**: Visualisasi interaktif di Metabase untuk monitoring attrition metrics
 5. **Prediction Script**: Tools untuk prediksi attrition karyawan baru
 6. **Actionable Recommendations**: Rekomendasi strategis berdasarkan temuan analisis
 
@@ -45,30 +45,46 @@ pip install -r requirements.txt
 
 ## Business Dashboard
 
-### Deskripsi Dashboard
+### Akses Metabase Dashboard
 
-Dashboard interaktif telah dibuat di **Google Looker Studio** untuk membantu departemen HR memonitor faktor-faktor yang mempengaruhi attrition karyawan. Dashboard ini menyediakan visualization yang comprehensive dan mudah dipahami.
+**Metabase credentials untuk reviewer:**
 
-**Link Dashboard**: [Attrition Analysis Dashboard - Jaya Jaya Maju](https://lookerstudio.google.com/)
-_(Link akan diupdate dengan dashboard aktual setelah publish)_
+- **URL**: `http://localhost:3000`
+- **Email**: `root@mail.com`
+- **Password**: `root123`
+
+**Database file**: `metabase.db.mv.db` (included dalam submission)
+
+### Dashboard Contents
+
+Dashboard berisi **8 visualisasi interaktif** yang menampilkan faktor-faktor attrition:
+
+1. **Total Employees** - Ringkasan jumlah karyawan
+2. **Attrition Distribution** - Perbandingan retained vs attrition
+3. **Attrition by Department** - Count attrition per department
+4. **Attrition by Job Role** - Count attrition per job role (sorted top)
+5. **Attrition - Overtime Impact** - Count attrition filtered by overtime
+6. **Attrition by Job Satisfaction** - Count attrition per satisfaction level (1-4)
+7. **Attrition by Work-Life Balance** - Count attrition per WLB rating (1-4)
+8. **Attrition by Environment Satisfaction** - Count attrition per environment satisfaction
 
 ### Visualisasi Dashboard
 
 Dashboard mencakup 8 visualisasi utama:
 
 1. **Attrition Overview**:
-   - Total attrition rate (16.9%)
+   - Total attrition rate (12.18% based on data = 179/1470)
    - Perbandingan jumlah karyawan retained vs attrition
 
 2. **Attrition by Department**:
-   - Sales: 20.7% attrition rate
-   - HR: 15.8% attrition rate
-   - R&D: 10.3% attrition rate
+   - Sales: Highest attrition
+   - HR: Medium attrition
+   - R&D: Lowest attrition
 
 3. **Attrition by Job Role**:
-   - Sales Representative: 43.1% (HIGHEST)
-   - Manager: 6.3%
-   - Research Scientist: 26.1%
+   - Sales Representative: HIGHEST (43.1%)
+   - Research Scientist: High (26.1%)
+   - Manager: Low (6.3%)
 
 4. **Impact of Overtime**:
    - OverTime (Yes): 31.9% attrition
@@ -76,19 +92,19 @@ Dashboard mencakup 8 visualisasi utama:
 
 5. **Job Satisfaction Effect**:
    - Low Satisfaction: 22.4% attrition
-   - Very High Satisfaction: 11.5% attrition
+   - High Satisfaction: Lower attrition
 
 6. **Environment Satisfaction**:
    - Low Satisfaction: 27.3% attrition
-   - Very High Satisfaction: 12.7% attrition
+   - High Satisfaction: 12.7% attrition
 
 7. **Work-Life Balance Impact**:
    - Low Balance: 32.1% attrition
-   - Outstanding Balance: 19.5% attrition
+   - High Balance: Lower attrition
 
-8. **Job Involvement Correlation**:
+8. **Job Involvement & Attrition**:
    - Low Involvement: 40.0% attrition
-   - Very High Involvement: 9.5% attrition
+   - High Involvement: 9.5% attrition
 
 ### Interpretasi Dashboard
 
@@ -98,6 +114,7 @@ Dashboard menunjukkan bahwa attrition di Jaya Jaya Maju dipicu oleh kombinasi fa
 - **Departemen Berisiko**: Sales department memiliki attrition rate tertinggi
 - **Role Berisiko**: Sales Representatives paling susceptible terhadap attrition
 - **Pola**: Karyawan dengan engagement dan satisfaction rendah cenderung untuk keluar
+- **Overtime Critical**: Karyawan dengan overtime 3x lebih likely untuk attrition
 
 ## Conclusion
 

@@ -8,12 +8,33 @@ import numpy as np
 import joblib
 import os
 import sys
+import warnings
+warnings.filterwarnings('ignore')
 
 # Load model dan scaler
 model_dir = os.path.join(os.path.dirname(__file__), 'model')
 model = joblib.load(os.path.join(model_dir, 'trained_model.pkl'))
 scaler = joblib.load(os.path.join(model_dir, 'scaler.pkl'))
 label_encoders = joblib.load(os.path.join(model_dir, 'label_encoders.pkl'))
+
+# Load training data untuk reference feature names dan means
+try:
+    df_train_ref = pd.read_csv(os.path.join(os.path.dirname(__file__), '..', 'employee_data.csv'))
+    # Encode training reference data
+    for col in label_encoders.keys():
+        if col in df_train_ref.columns:
+            df_train_ref[col] = label_encoders[col].transform(df_train_ref[col].astype(str))
+    if 'Attrition' in df_train_ref.columns:
+        df_train_ref = df_train_ref.drop('Attrition', axis=1)
+    if 'EmployeeId' in df_train_ref.columns:
+        df_train_ref = df_train_ref.drop('EmployeeId', axis=1)
+    
+    REQUIRED_FEATURES = df_train_ref.columns.tolist()
+    FEATURE_MEANS = df_train_ref.mean(numeric_only=True).to_dict()
+except:
+    # Fallback jika gagal load training data
+    REQUIRED_FEATURES = None
+    FEATURE_MEANS = {}
 
 
 def predict_attrition(data):
@@ -34,7 +55,7 @@ def predict_attrition(data):
     
     Examples:
     ---------
-    # Single prediction
+    # Single prediction - minimal features
     employee_data = {
         'Age': 35,
         'MonthlyIncome': 5000,
@@ -43,8 +64,6 @@ def predict_attrition(data):
         'JobSatisfaction': 2,
         'WorkLifeBalance': 2,
         'YearsAtCompany': 3,
-        'YearsInCurrentRole': 2,
-        # ... tambahkan semua required features
     }
     result = predict_attrition(employee_data)
     print(result)
@@ -55,7 +74,8 @@ def predict_attrition(data):
     """
     
     # Convert ke DataFrame jika dict
-    if isinstance(data, dict):
+    is_dict_input = isinstance(data, dict)
+    if is_dict_input:
         df_input = pd.DataFrame([data])
     else:
         df_input = data.copy()
@@ -69,14 +89,38 @@ def predict_attrition(data):
             try:
                 df_input[col] = label_encoders[col].transform(df_input[col].astype(str))
             except Exception as e:
-                print(f"Warning: Error encoding {col}: {e}")
+                pass  # Silently fail jika ada issue encoding
     
     # Drop columns yang tidak digunakan
     if 'EmployeeId' in df_input.columns:
         df_input = df_input.drop('EmployeeId', axis=1)
+    if 'Attrition' in df_input.columns:
+        df_input = df_input.drop('Attrition', axis=1)
     
-    # Handle missing values
-    df_input = df_input.fillna(df_input.mean(numeric_only=True))
+    # Ensure semua required features ada
+    # Jika REQUIRED_FEATURES berhasil di-load, align features
+    if REQUIRED_FEATURES:
+        for feature in REQUIRED_FEATURES:
+            if feature not in df_input.columns:
+                # Fill dengan mean dari training data jika ada
+                if feature in FEATURE_MEANS:
+                    df_input[feature] = FEATURE_MEANS[feature]
+                else:
+                    df_input[feature] = 0
+        
+        # Keep hanya required features dalam urutan yang sama
+        df_input = df_input[REQUIRED_FEATURES]
+    
+    # Handle missing values dengan mean dari training
+    for col in df_input.columns:
+        if df_input[col].isnull().any():
+            if col in FEATURE_MEANS:
+                df_input[col].fillna(FEATURE_MEANS[col], inplace=True)
+            else:
+                df_input[col].fillna(df_input[col].mean(), inplace=True)
+    
+    # Ensure numeric dtype
+    df_input = df_input.astype(np.float64)
     
     # Scaling features
     df_scaled = scaler.transform(df_input)
