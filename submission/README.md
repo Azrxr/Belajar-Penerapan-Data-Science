@@ -18,13 +18,12 @@
 
 ### Cakupan Proyek
 
-Proyek ini mengimplementasikan seluruh tahapan data science untuk mengidentifikasi faktor penyebab attrition dan membangun sistem prediksi, termasuk:
+Proyek ini akan menganalisis data karyawan untuk menemukan pola attrition dan membangun Business Dashboard interaktif. Dashboard tersebut dibuat untuk menjawab daftar pertanyaan bisnis berikut:
 
-- Exploratory Data Analysis (EDA) untuk memahami pola attrition
-- Data Preparation dengan cleaning dan preprocessing
-- Pembuatan Machine Learning Model untuk prediksi attrition
-- Business Dashboard interaktif di Metabase
-- Script prediksi untuk identifikasi karyawan berisiko
+- Berapa persentase attrition rate perusahaan saat ini?
+- Departemen dan peran (Job Role) mana yang menyumbang angka attrition tertinggi?
+- Apakah beban kerja seperti lembur (OverTime) berdampak langsung terhadap keputusan karyawan untuk keluar?
+- Bagaimana pengaruh tingkat kesejahteraan karyawan (Job Satisfaction, Environment Satisfaction, & Work-Life Balance) terhadap tingkat attrition?
 
 ### Persiapan
 
@@ -68,29 +67,17 @@ Dashboard Metabase dengan 8 visualisasi interaktif menampilkan faktor-faktor pen
 
 ## Conclusion
 
-### Ringkasan Temuan
+Berdasarkan analisis data, disimpulkan bahwa:
+- Attrition rate saat ini mencapai 16.9%, jauh melampaui batas toleransi perusahaan (10%).
+- Faktor beban kerja sangat kritis: Karyawan yang diwajibkan lembur (OverTime=Yes) memiliki jumlah attrition yang paling tinggi.
+- Departemen R&D dan Sales (khususnya Laboratory Technician dan Sales Executive) adalah kelompok paling rentan untuk keluar.
+- Skor kesejahteraan (WLB dan Environment Satisfaction) yang rendah berkontribusi besar pada keputusan karyawan untuk resign.
 
-Analisis 1058 karyawan Jaya Jaya Maju menunjukkan attrition rate saat ini **16.9%**, melampaui standar 10%. Faktor utama pemicu attrition:
-
-1. **Beban Kerja Berlebih**: Karyawan yang lembur (OverTime=Yes) menunjukkan attrition signifikan lebih tinggi
-2. **Departemen Berisiko**: R&D dan Sales menjadi penyumbang attrition terbesar
-3. **Work-Life Balance**: Karyawan dengan skor WLB rendah (1-2) memiliki kecenderungan attrition tinggi
-4. **Job Role**: Laboratory Technician dan Sales Executive adalah posisi paling rentan
-
-Model machine learning (Logistic Regression) mencapai accuracy **78%** dan ROC-AUC **0.8373**, dapat diandalkan untuk identifikasi karyawan berisiko tinggi.
+Model Machine Learning (Logistic Regression) yang dibangun berhasil mencapai akurasi 78% dengan ROC-AUC 0.8373, membuktikan bahwa model ini layak digunakan untuk memprediksi probabilitas keluarnya karyawan.
 
 ### Rekomendasi Action Items
 
-1. **Manajemen Beban Kerja** (1-3 bulan)
-   - Audit target kerja di R&D dan Sales
-   - Implementasikan batas jam lembur maksimal per minggu
-   - Tambah personel di divisi dengan beban kerja tinggi
-
-2. **Peningkatan Work-Life Balance** (3-6 bulan)
-   - Sistem jam kerja fleksibel atau hybrid-working
-   - Program kesehatan mental dan kesejahteraan karyawan
-   - Revitalisasi lingkungan kerja
-
-3. **Early Warning System**
-   - Gunakan `prediction.py` untuk evaluasi kuartalan
-   - Lakukan stay-interview untuk karyawan berisiko tinggi sebelum mereka pergi
+Berikut adalah beberapa rekomendasi action items yang harus dilakukan perusahaan guna menyelesaikan permasalahan tingginya attrition:
+- Action item 1: Melakukan audit beban kerja dan menerapkan kebijakan batas jam lembur maksimal per minggu, khususnya di departemen Sales dan R&D.
+- Action item 2: Mengimplementasikan sistem jam kerja fleksibel (flexi-time) atau hybrid-working untuk meningkatkan skor Work-Life Balance karyawan.
+- Action item 3: Menggunakan script prediksi ML (prediction.py) secara kuartalan untuk mendeteksi dini karyawan yang berisiko keluar, lalu melakukan stay-interview sebelum mereka benar-benar pergi.

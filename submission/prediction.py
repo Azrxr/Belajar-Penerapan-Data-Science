@@ -11,27 +11,29 @@ import sys
 import warnings
 warnings.filterwarnings('ignore')
 
-# Load model dan scaler
 model_dir = os.path.join(os.path.dirname(__file__), 'model')
 model = joblib.load(os.path.join(model_dir, 'trained_model.pkl'))
 scaler = joblib.load(os.path.join(model_dir, 'scaler.pkl'))
 label_encoders = joblib.load(os.path.join(model_dir, 'label_encoders.pkl'))
 
-# Load training data untuk reference feature names dan means
 try:
     df_train_ref = pd.read_csv(os.path.join(os.path.dirname(__file__), '..', 'employee_data.csv'))
-    # Encode training reference data
+    
+    cols_to_drop = ['Attrition', 'EmployeeId', 'EmployeeCount']
+    for col in cols_to_drop:
+        if col in df_train_ref.columns:
+            df_train_ref = df_train_ref.drop(col, axis=1)
+            
     for col in label_encoders.keys():
         if col in df_train_ref.columns:
-            df_train_ref[col] = label_encoders[col].transform(df_train_ref[col].astype(str))
-    if 'Attrition' in df_train_ref.columns:
-        df_train_ref = df_train_ref.drop('Attrition', axis=1)
+            df_train_ref[col] = df_train_ref[col].fillna('Unknown').astype(str)
+            known_classes = set(label_encoders[col].classes_)
+            df_train_ref[col] = df_train_ref[col].apply(lambda x: x if x in known_classes else label_encoders[col].classes_[0])
+            df_train_ref[col] = label_encoders[col].transform(df_train_ref[col])
     
-    # Keep EmployeeId for scaler compatibility! Don't drop it.
     REQUIRED_FEATURES = df_train_ref.columns.tolist()
     FEATURE_MEANS = df_train_ref.mean(numeric_only=True).to_dict()
-except:
-    # Fallback: Get feature names dari scaler jika ada
+except Exception as e:
     try:
         REQUIRED_FEATURES = scaler.feature_names_in_.tolist()
         FEATURE_MEANS = {}
@@ -48,71 +50,48 @@ def predict_attrition(data):
     -----------
     data : dict atau pd.DataFrame
         Data karyawan untuk prediksi.
-        Untuk single prediction: dict dengan columns sebagai keys
-        Untuk multiple predictions: DataFrame
     
     Returns:
     --------
     dict atau DataFrame
         Berisi prediksi (0 atau 1) dan probability
-    
-    Examples:
-    ---------
-    # Single prediction - minimal features
-    employee_data = {
-        'Age': 35,
-        'MonthlyIncome': 5000,
-        'Department': 'Sales',
-        'OverTime': 'Yes',
-        'JobSatisfaction': 2,
-        'WorkLifeBalance': 2,
-        'YearsAtCompany': 3,
-    }
-    result = predict_attrition(employee_data)
-    print(result)
-    
-    # Multiple predictions dari CSV
-    df_employees = pd.read_csv('employees.csv')
-    results = predict_attrition(df_employees)
     """
     
-    # Convert ke DataFrame jika dict
     is_dict_input = isinstance(data, dict)
     if is_dict_input:
         df_input = pd.DataFrame([data])
     else:
         df_input = data.copy()
     
-    # Encode categorical variables menggunakan label encoders
-    categorical_features = ['Gender', 'Department', 'JobRole', 'MaritalStatus', 'OverTime',
-                           'BusinessTravel', 'EducationField']
+    cols_to_drop = ['Attrition', 'EmployeeId', 'EmployeeCount']
+    for col in cols_to_drop:
+        if col in df_input.columns:
+            df_input = df_input.drop(col, axis=1)
+            
+    for col in label_encoders.keys():
+        if col in df_input.columns:
+            df_input[col] = df_input[col].fillna('Unknown').astype(str)
+            known_classes = set(label_encoders[col].classes_)
+            default_class = label_encoders[col].classes_[0]
+            
+            df_input[col] = df_input[col].apply(lambda x: x if x in known_classes else default_class)
+            # Transform
+            df_input[col] = label_encoders[col].transform(df_input[col])
+            
+    object_cols = df_input.select_dtypes(include=['object']).columns
+    for col in object_cols:
+        df_input[col] = pd.to_numeric(df_input[col], errors='coerce').fillna(0)
     
-    for col in categorical_features:
-        if col in df_input.columns and col in label_encoders:
-            try:
-                df_input[col] = label_encoders[col].transform(df_input[col].astype(str))
-            except Exception as e:
-                pass  # Silently fail jika ada issue encoding
-    
-    # Drop Attrition column jika ada (bukan EmployeeId)
-    if 'Attrition' in df_input.columns:
-        df_input = df_input.drop('Attrition', axis=1)
-    
-    # Ensure semua required features ada (termasuk EmployeeId)
-    # Jika REQUIRED_FEATURES berhasil di-load, align features
     if REQUIRED_FEATURES:
         for feature in REQUIRED_FEATURES:
             if feature not in df_input.columns:
-                # Fill dengan mean dari training data jika ada
                 if feature in FEATURE_MEANS:
                     df_input[feature] = FEATURE_MEANS[feature]
                 else:
                     df_input[feature] = 0
         
-        # Keep hanya required features dalam urutan yang sama
         df_input = df_input[REQUIRED_FEATURES]
     
-    # Handle missing values dengan mean dari training
     for col in df_input.columns:
         if df_input[col].isnull().any():
             if col in FEATURE_MEANS:
@@ -120,23 +99,13 @@ def predict_attrition(data):
             else:
                 df_input[col].fillna(df_input[col].mean(), inplace=True)
     
-    # Ensure numeric dtype
     df_input = df_input.astype(np.float64)
     
-    # Scale using scaler - it expects EmployeeId to be present
     df_scaled = scaler.transform(df_input)
     
-    # Drop EmployeeId AFTER scaling (model was trained without it)
-    # Get EmployeeId column index and remove it from scaled data
-    if 'EmployeeId' in df_input.columns:
-        employeeid_idx = df_input.columns.tolist().index('EmployeeId')
-        df_scaled = np.delete(df_scaled, employeeid_idx, axis=1)
-    
-    # Predict - model was trained on 33 features (without EmployeeId)
     predictions = model.predict(df_scaled)
     probabilities = model.predict_proba(df_scaled)[:, 1]
     
-    # Prepare results
     if is_dict_input:
         return {
             'prediction': 'Yes' if predictions[0] == 1 else 'No',
@@ -152,19 +121,6 @@ def predict_attrition(data):
 
 
 def get_risk_level(probability):
-    """
-    Kategori risiko berdasarkan probability.
-    
-    Parameters:
-    -----------
-    probability : float
-        Probability attrition (0-1)
-    
-    Returns:
-    --------
-    str
-        Kategori risiko: 'Low', 'Medium', 'High'
-    """
     if probability < 0.3:
         return 'Low'
     elif probability < 0.7:
@@ -174,14 +130,6 @@ def get_risk_level(probability):
 
 
 def get_feature_description():
-    """
-    Deskripsi fitur yang diperlukan untuk prediksi.
-    
-    Returns:
-    --------
-    dict
-        Mapping nama feature dengan deskripsinya
-    """
     features = {
         'Age': 'Umur karyawan (tahun)',
         'MonthlyIncome': 'Pendapatan bulanan (Rp)',
@@ -206,7 +154,7 @@ def get_feature_description():
 
 if __name__ == "__main__":
     print("=" * 80)
-    print("ATTRITION PREDICTION TOOL")
+    print("ATTRITION PREDICTION TOOL (UPDATED & BULLETPROOF)")
     print("=" * 80)
     print()
     
@@ -239,7 +187,9 @@ if __name__ == "__main__":
         'PerformanceRating': 3,
         'RelationshipSatisfaction': 1,
         'StandardHours': 80,
-        'TrainingTimesLastYear': 2
+        'TrainingTimesLastYear': 2,
+        'EmployeeCount': 1,
+        'EmployeeId': 9999
     }
     
     print("Contoh Prediksi untuk Seorang Karyawan:")
@@ -248,17 +198,4 @@ if __name__ == "__main__":
     print(f"Prediksi Attrition: {result['prediction']}")
     print(f"Probability: {result['probability']:.2%}")
     print(f"Risk Level: {result['risk_level']}")
-    print()
-    
-    print("Feature yang Diperlukan:")
-    print("-" * 80)
-    features = get_feature_description()
-    for i, (feature, description) in enumerate(features.items(), 1):
-        print(f"{i}. {feature}: {description}")
-    print()
-    
-    print("Untuk menggunakan script ini:")
-    print("1. Dari Python: from prediction import predict_attrition")
-    print("2. Buat dictionary dengan data karyawan")
-    print("3. Panggil: result = predict_attrition(employee_data)")
     print()
