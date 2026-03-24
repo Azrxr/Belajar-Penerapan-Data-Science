@@ -26,15 +26,18 @@ try:
             df_train_ref[col] = label_encoders[col].transform(df_train_ref[col].astype(str))
     if 'Attrition' in df_train_ref.columns:
         df_train_ref = df_train_ref.drop('Attrition', axis=1)
-    if 'EmployeeId' in df_train_ref.columns:
-        df_train_ref = df_train_ref.drop('EmployeeId', axis=1)
     
+    # Keep EmployeeId for scaler compatibility! Don't drop it.
     REQUIRED_FEATURES = df_train_ref.columns.tolist()
     FEATURE_MEANS = df_train_ref.mean(numeric_only=True).to_dict()
 except:
-    # Fallback jika gagal load training data
-    REQUIRED_FEATURES = None
-    FEATURE_MEANS = {}
+    # Fallback: Get feature names dari scaler jika ada
+    try:
+        REQUIRED_FEATURES = scaler.feature_names_in_.tolist()
+        FEATURE_MEANS = {}
+    except:
+        REQUIRED_FEATURES = None
+        FEATURE_MEANS = {}
 
 
 def predict_attrition(data):
@@ -91,13 +94,11 @@ def predict_attrition(data):
             except Exception as e:
                 pass  # Silently fail jika ada issue encoding
     
-    # Drop columns yang tidak digunakan
-    if 'EmployeeId' in df_input.columns:
-        df_input = df_input.drop('EmployeeId', axis=1)
+    # Drop Attrition column jika ada (bukan EmployeeId)
     if 'Attrition' in df_input.columns:
         df_input = df_input.drop('Attrition', axis=1)
     
-    # Ensure semua required features ada
+    # Ensure semua required features ada (termasuk EmployeeId)
     # Jika REQUIRED_FEATURES berhasil di-load, align features
     if REQUIRED_FEATURES:
         for feature in REQUIRED_FEATURES:
@@ -122,22 +123,28 @@ def predict_attrition(data):
     # Ensure numeric dtype
     df_input = df_input.astype(np.float64)
     
-    # Scaling features
+    # Scale using scaler - it expects EmployeeId to be present
     df_scaled = scaler.transform(df_input)
     
-    # Predict
+    # Drop EmployeeId AFTER scaling (model was trained without it)
+    # Get EmployeeId column index and remove it from scaled data
+    if 'EmployeeId' in df_input.columns:
+        employeeid_idx = df_input.columns.tolist().index('EmployeeId')
+        df_scaled = np.delete(df_scaled, employeeid_idx, axis=1)
+    
+    # Predict - model was trained on 33 features (without EmployeeId)
     predictions = model.predict(df_scaled)
     probabilities = model.predict_proba(df_scaled)[:, 1]
     
     # Prepare results
-    if isinstance(data, dict):
+    if is_dict_input:
         return {
             'prediction': 'Yes' if predictions[0] == 1 else 'No',
             'probability': float(probabilities[0]),
             'risk_level': get_risk_level(probabilities[0])
         }
     else:
-        results_df = df_input.copy() if isinstance(data, pd.DataFrame) else data.copy()
+        results_df = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame(data)
         results_df['attrition_prediction'] = ['Yes' if p == 1 else 'No' for p in predictions]
         results_df['attrition_probability'] = probabilities
         results_df['risk_level'] = [get_risk_level(p) for p in probabilities]
